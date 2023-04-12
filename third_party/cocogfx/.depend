@@ -1,0 +1,7 @@
+blitter.o: src/blitter.cpp include/blitter.h include/format.h \
+ include/uint24.h include/color.h
+lupng.o: src/lupng.cpp src/lupng.h
+main.o: src/main.cpp include/blitter.h include/format.h include/uint24.h \
+ include/color.h include/tga.h include/png.h
+png.o: src/png.cpp include/png.h src/lupng.h
+tga.o: src/tga.cpp include/tga.h
