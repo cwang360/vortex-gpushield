@@ -30,6 +30,7 @@ Core::Core(const SimContext& ctx, const ArchDef &arch, uint32_t id)
     , ibuffers_(arch.num_warps(), IBUF_SIZE)
     , scoreboard_(arch_) 
     , exe_units_((int)ExeType::MAX)
+    , bcu_(BcuUnit::Create(ctx, this, "bcu"))
     , icache_(Cache::Create("icache", Cache::Config{
         log2ceil(ICACHE_SIZE),  // C
         log2ceil(L1_BLOCK_SIZE),// B
@@ -330,6 +331,11 @@ void Core::execute() {
     // push to execute units
     auto& exe_unit = exe_units_.at((int)trace->exe_type);
     exe_unit->Input.send(trace, 1);
+
+    // if accessing memory, push to bounds-checking unit as well
+    if (trace->exe_type == ExeType::LSU) {
+      bcu_->Input.send(trace, 1);
+    }
 
     ibuffer.pop();
     break;

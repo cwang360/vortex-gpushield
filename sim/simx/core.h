@@ -22,6 +22,7 @@
 #include "scoreboard.h"
 #include "exeunit.h"
 #include "tex_unit.h"
+#include "bcu.h"
 
 namespace vortex {
 
@@ -147,6 +148,7 @@ private:
   std::vector<IBuffer> ibuffers_;
   Scoreboard scoreboard_;
   std::vector<ExeUnit::Ptr> exe_units_;
+  BcuUnit::Ptr bcu_;
   Cache::Ptr icache_;
   Cache::Ptr dcache_;
   SharedMem::Ptr shared_mem_;

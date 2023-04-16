@@ -152,6 +152,8 @@ void LsuUnit::tick() {
         mem_req.tag   = tag;
         mem_req.core_id = trace->cid;
         mem_req.uuid = trace->uuid;
+
+        // Check bounds before memory access
         
         if (type == AddrType::Shared) {
             core_->shared_mem_->Inputs.at(t).send(mem_req, 2);
