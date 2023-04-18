@@ -30,6 +30,7 @@ Core::Core(const SimContext& ctx, const ArchDef &arch, uint32_t id)
     , ibuffers_(arch.num_warps(), IBUF_SIZE)
     , scoreboard_(arch_) 
     , exe_units_((int)ExeType::MAX)
+    , bcu_(BcuUnit::Create(this, "bcu"))
     , icache_(Cache::Create("icache", Cache::Config{
         log2ceil(ICACHE_SIZE),  // C
         log2ceil(L1_BLOCK_SIZE),// B
@@ -60,6 +61,21 @@ Core::Core(const SimContext& ctx, const ArchDef &arch, uint32_t id)
         DCACHE_MSHR_SIZE,       // mshr
         4,                      // pipeline latency
       }))
+    , rcache_(Cache::Create("rcache", Cache::Config{
+        log2ceil(RCACHE_SIZE),  // C
+        log2ceil(L1_BLOCK_SIZE),// B
+        2,                      // W
+        0,                      // A
+        32,                     // address bits    
+        1,                      // number of banks
+        1,                      // number of ports
+        1,                      // request size   
+        true,                   // write-through
+        false,                  // write response
+        0,                      // victim size
+        RCACHE_MSHR_SIZE,       // mshr
+        2,                      // pipeline latency
+      }))
     , shared_mem_(SharedMem::Create("sharedmem", SharedMem::Config{
         arch.num_threads(), 
         arch.num_threads(), 
@@ -67,7 +83,8 @@ Core::Core(const SimContext& ctx, const ArchDef &arch, uint32_t id)
         1,
         false
       }))
-    , l1_mem_switch_(Switch<MemReq, MemRsp>::Create("l1_arb", ArbiterType::Priority, 2)) 
+    , l1_mem_switch_(Switch<MemReq, MemRsp>::Create("l1_arb", ArbiterType::Priority, 3)) 
+    , rcache_switch_(Switch<MemReq, MemRsp>::Create("l1_arb", ArbiterType::Priority, 3)) 
     , dcache_switch_(arch.num_threads())
     , fetch_latch_("fetch")
     , decode_latch_("decode")
@@ -88,10 +105,15 @@ Core::Core(const SimContext& ctx, const ArchDef &arch, uint32_t id)
   // connect l1 switch
   icache_->MemReqPort.bind(&l1_mem_switch_->ReqIn[0]);
   dcache_->MemReqPort.bind(&l1_mem_switch_->ReqIn[1]);
+  rcache_->MemReqPort.bind(&l1_mem_switch_->ReqIn[2]);
   l1_mem_switch_->RspOut[0].bind(&icache_->MemRspPort);  
   l1_mem_switch_->RspOut[1].bind(&dcache_->MemRspPort);
+  l1_mem_switch_->RspOut[2].bind(&rcache_->MemRspPort);
   this->MemRspPort.bind(&l1_mem_switch_->RspIn);
   l1_mem_switch_->ReqOut.bind(&this->MemReqPort);
+
+  rcache_->CoreRspPorts.at(0).bind(&rcache_switch_->RspIn);
+  rcache_switch_->ReqOut.bind(&rcache_->CoreReqPorts.at(0));
 
   // lsu/tex switch
   for (uint32_t i = 0, n = arch.num_threads(); i < n; ++i) {
@@ -330,6 +352,11 @@ void Core::execute() {
     // push to execute units
     auto& exe_unit = exe_units_.at((int)trace->exe_type);
     exe_unit->Input.send(trace, 1);
+
+    // if accessing memory, push to bounds-checking unit as well
+    if (trace->exe_type == ExeType::LSU) {
+      bcu_->Input.send(trace, 1);
+    }
 
     ibuffer.pop();
     break;

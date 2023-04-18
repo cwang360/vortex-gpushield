@@ -22,6 +22,7 @@
 #include "scoreboard.h"
 #include "exeunit.h"
 #include "tex_unit.h"
+#include "bcu.h"
 
 namespace vortex {
 
@@ -147,11 +148,14 @@ private:
   std::vector<IBuffer> ibuffers_;
   Scoreboard scoreboard_;
   std::vector<ExeUnit::Ptr> exe_units_;
+  BcuUnit::Ptr bcu_;
   Cache::Ptr icache_;
   Cache::Ptr dcache_;
+  Cache::Ptr rcache_;
   SharedMem::Ptr shared_mem_;
   Switch<MemReq, MemRsp>::Ptr l1_mem_switch_;
   std::vector<Switch<MemReq, MemRsp>::Ptr> dcache_switch_;
+  Switch<MemReq, MemRsp>::Ptr rcache_switch_;
 
   PipelineLatch fetch_latch_;
   PipelineLatch decode_latch_;
@@ -176,6 +180,7 @@ private:
   friend class CsrUnit;
   friend class FpuUnit;
   friend class GpuUnit;
+  friend class BcuUnit;
 };
 
 } // namespace vortex

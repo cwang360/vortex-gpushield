@@ -390,6 +390,19 @@
 #define DCACHE_MRSQ_SIZE 0
 #endif
 
+// Rcache Configurable Knobs //////////////////////////////////////////////////
+
+// Size of cache in bytes
+#ifndef RCACHE_SIZE
+#define RCACHE_SIZE 16384
+#endif
+
+// Miss Handling Register Size
+#ifndef RCACHE_MSHR_SIZE
+#define RCACHE_MSHR_SIZE LSUQ_SIZE
+#endif
+
+
 // SM Configurable Knobs //////////////////////////////////////////////////////
 
 // per thread stack size
