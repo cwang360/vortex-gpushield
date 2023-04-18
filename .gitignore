@@ -5,3 +5,6 @@
 *.so
 *.log
 *.a
+*.cache
+*.code-workspace
+*.depend
