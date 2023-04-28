@@ -1,3 +1,4 @@
-main.o: main.cpp /home/bradley/cs3220/temp/vortex/driver/include/vortex.h \
- /home/bradley/cs3220/temp/vortex/runtime/../hw/VX_config.h testcases.h \
- common.h
+main.o: main.cpp \
+ /home/bradley/cs3220/vortex-gpushield/driver/include/vortex.h \
+ /home/bradley/cs3220/vortex-gpushield/runtime/../hw/VX_config.h \
+ testcases.h common.h

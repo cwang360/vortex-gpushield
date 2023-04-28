@@ -7,3 +7,6 @@
 *.a
 
 .vscode
+*.cache
+*.code-workspace
+*.depend

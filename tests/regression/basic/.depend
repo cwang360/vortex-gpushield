@@ -1,2 +1,2 @@
-main.o: main.cpp /home/bradley/cs3220/temp/vortex/driver/include/vortex.h \
- common.h
+main.o: main.cpp \
+ /home/bradley/cs3220/vortex-gpushield/driver/include/vortex.h common.h
