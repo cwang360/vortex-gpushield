@@ -30,7 +30,7 @@ Core::Core(const SimContext& ctx, const ArchDef &arch, uint32_t id)
     , ibuffers_(arch.num_warps(), IBUF_SIZE)
     , scoreboard_(arch_) 
     , exe_units_((int)ExeType::MAX)
-    , bcu_(BcuUnit::Create(ctx, this, "bcu"))
+    , bcu_(BcuUnit::Create(this, "bcu"))
     , icache_(Cache::Create("icache", Cache::Config{
         log2ceil(ICACHE_SIZE),  // C
         log2ceil(L1_BLOCK_SIZE),// B
