@@ -33,10 +33,11 @@ void BcuUnit::tick() {
     auto& rcache_req_port = core_->rcache_switch_->ReqIn.at(0);
 
     auto mem_addr = trace->mem_addrs.at(0).at(0);
-
-    DT(1, "bcu-req: " << std::hex << mem_addr.addr << ", " << *trace);
-
     auto tag = pending_reqs_.allocate({trace, 1});
+
+
+    DT(1, "bcu-req: " << std::hex << mem_addr.addr << ", " << tag << ", " << *trace);
+
 
     // FIXME: need to properly initialize memory and request for loading RBT entry.
     MemReq mem_req;
@@ -50,9 +51,48 @@ void BcuUnit::tick() {
     // temporarily use this, may have to make a custom cache later.
     rcache_req_port.send(mem_req, 1);
         
-    //for (auto& mem_addr : trace->mem_addrs) {
-    //    uint64_t addr = mem_addr.at(0).addr;
-    //    DT(1, "bcu-req: addr=" << std::hex << addr << ", " << *trace);
-    //} 
     auto time = Input.pop();
+}
+
+void RbtCache::reset() {
+    cache_set_ = std::queue<RbtCacheEntry>();
+    perf_stats_ = PerfStats();
+    // mshr.clear();
+    pending_read_reqs_ = 0;
+    pending_write_reqs_ = 0;
+    pending_fill_reqs_ = 0;
+}
+
+void RbtCache::tick() {
+
+    // calculate memory latency
+    perf_stats_.mem_latency += pending_fill_reqs_; 
+
+    // handle incoming core requests
+    for (uint32_t req_id = 0, n = config_.num_inputs; req_id < n; ++req_id) {
+        auto& core_req_port = CoreReqPorts.at(req_id);            
+        if (core_req_port.empty())
+            continue;
+
+        auto& core_req = core_req_port.front();
+        
+        DT(1, "rcache-receiving-req: addr=" << std::hex << core_req.addr << ", " << core_req.tag);
+
+        MemRsp core_rsp{core_req.tag, core_req.core_id, core_req.uuid};
+        CoreRspPorts.at(req_id).send(core_rsp, config_.latency);
+        DT(1, "rcache-sending-rsp: addr=" << std::hex << core_req.addr << ", " << core_req.tag);
+
+        ++perf_stats_.reads;
+
+        // remove request
+        auto time = core_req_port.pop();
+        perf_stats_.pipeline_stalls += (SimPlatform::instance().cycles() - time);
+    }
+
+    // process active request        
+    // this->processBankRequest(pipeline_reqs);
+} 
+
+const RbtCache::PerfStats& RbtCache::perf_stats() const {
+    return perf_stats_;
 }

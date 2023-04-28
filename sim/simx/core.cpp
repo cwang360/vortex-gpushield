@@ -61,7 +61,7 @@ Core::Core(const SimContext& ctx, const ArchDef &arch, uint32_t id)
         DCACHE_MSHR_SIZE,       // mshr
         4,                      // pipeline latency
       }))
-    , rcache_(Cache::Create("rcache", Cache::Config{
+    , rcache_(RbtCache::Create("rcache", RbtCache::Config{
         log2ceil(RCACHE_SIZE),  // C
         log2ceil(L1_BLOCK_SIZE),// B
         2,                      // W

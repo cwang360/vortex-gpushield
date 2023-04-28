@@ -151,7 +151,7 @@ private:
   BcuUnit::Ptr bcu_;
   Cache::Ptr icache_;
   Cache::Ptr dcache_;
-  Cache::Ptr rcache_;
+  RbtCache::Ptr rcache_;
   SharedMem::Ptr shared_mem_;
   Switch<MemReq, MemRsp>::Ptr l1_mem_switch_;
   std::vector<Switch<MemReq, MemRsp>::Ptr> dcache_switch_;
