@@ -151,11 +151,10 @@ private:
   BcuUnit::Ptr bcu_;
   Cache::Ptr icache_;
   Cache::Ptr dcache_;
-  RbtCache::Ptr rcache_;
   SharedMem::Ptr shared_mem_;
   Switch<MemReq, MemRsp>::Ptr l1_mem_switch_;
   std::vector<Switch<MemReq, MemRsp>::Ptr> dcache_switch_;
-  Switch<MemReq, MemRsp>::Ptr rcache_switch_;
+  // Switch<MemReq, MemRsp>::Ptr rcache_switch_;
 
   PipelineLatch fetch_latch_;
   PipelineLatch decode_latch_;

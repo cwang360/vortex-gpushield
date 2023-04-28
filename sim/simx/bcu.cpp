@@ -5,7 +5,7 @@ using namespace vortex;
 
 void BcuUnit::tick() {
     // handle rcache response
-    auto& rcache_rsp_port = core_->rcache_switch_->RspOut.at(0);
+    auto& rcache_rsp_port = rcache_->BcuRspPort;
     if (!rcache_rsp_port.empty()) {
         auto& mem_rsp = rcache_rsp_port.front();
         auto& entry = pending_reqs_.at(mem_rsp.tag);          
@@ -30,8 +30,6 @@ void BcuUnit::tick() {
         return;
     
         
-    auto& rcache_req_port = core_->rcache_switch_->ReqIn.at(0);
-
     auto mem_addr = trace->mem_addrs.at(0).at(0);
     auto tag = pending_reqs_.allocate({trace, 1});
 
@@ -49,7 +47,7 @@ void BcuUnit::tick() {
     mem_req.uuid = trace->uuid;
          
     // temporarily use this, may have to make a custom cache later.
-    rcache_req_port.send(mem_req, 1);
+    rcache_->BcuReqPort.send(mem_req, 1);
         
     auto time = Input.pop();
 }
@@ -68,26 +66,25 @@ void RbtCache::tick() {
     // calculate memory latency
     perf_stats_.mem_latency += pending_fill_reqs_; 
 
-    // handle incoming core requests
-    for (uint32_t req_id = 0, n = config_.num_inputs; req_id < n; ++req_id) {
-        auto& core_req_port = CoreReqPorts.at(req_id);            
-        if (core_req_port.empty())
-            continue;
+    // handle incoming BCU requests
+    if (BcuReqPort.empty())
+        return;
 
-        auto& core_req = core_req_port.front();
-        
-        DT(1, "rcache-receiving-req: addr=" << std::hex << core_req.addr << ", " << core_req.tag);
+    auto& bcu_req = BcuReqPort.front();
+    
+    DT(1, "rcache-receiving-req: addr=" << std::hex << bcu_req.addr << ", " << bcu_req.tag);
 
-        MemRsp core_rsp{core_req.tag, core_req.core_id, core_req.uuid};
-        CoreRspPorts.at(req_id).send(core_rsp, config_.latency);
-        DT(1, "rcache-sending-rsp: addr=" << std::hex << core_req.addr << ", " << core_req.tag);
+    
 
-        ++perf_stats_.reads;
+    MemRsp bcu_rsp{bcu_req.tag, bcu_req.core_id, bcu_req.uuid};
+    BcuRspPort.send(bcu_rsp, config_.latency);
+    DT(1, "rcache-sending-rsp: addr=" << std::hex << bcu_req.addr << ", " << bcu_req.tag);
 
-        // remove request
-        auto time = core_req_port.pop();
-        perf_stats_.pipeline_stalls += (SimPlatform::instance().cycles() - time);
-    }
+    ++perf_stats_.reads;
+
+    // remove request
+    auto time = BcuReqPort.pop();
+    perf_stats_.pipeline_stalls += (SimPlatform::instance().cycles() - time);
 
     // process active request        
     // this->processBankRequest(pipeline_reqs);

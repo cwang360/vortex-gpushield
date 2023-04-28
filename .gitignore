@@ -5,3 +5,5 @@
 *.so
 *.log
 *.a
+
+.vscode

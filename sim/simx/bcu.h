@@ -10,32 +10,6 @@ namespace vortex {
 
 class Core;
 
-class BcuUnit : public SimObject<BcuUnit> {
-private:
-    HashTable<std::pair<pipeline_trace_t*, uint32_t>> pending_reqs_;
-
-public:
-    SimPort<pipeline_trace_t*> Input;
-    SimPort<pipeline_trace_t*> Output;
-
-    BcuUnit(const SimContext& ctx, Core* core, const char* name) 
-        : SimObject<BcuUnit>(ctx, name) 
-        , pending_reqs_(BCUQ_SIZE)
-        , Input(this)
-        , Output(this)
-        , core_(core)
-    {}
-    
-    virtual ~BcuUnit() {}
-
-    void reset() {}
-
-    void tick();
-
-private:
-    Core* core_;
-};
-
 class RbtCache : public SimObject<RbtCache> {
 public:
     struct Config {
@@ -80,16 +54,16 @@ public:
         uint64_t kernel_id;
     };
 
-    std::vector<SimPort<MemReq>> CoreReqPorts;
-    std::vector<SimPort<MemRsp>> CoreRspPorts;
-    SimPort<MemReq>              MemReqPort;
-    SimPort<MemRsp>              MemRspPort;
+    SimPort<MemReq>     BcuReqPort;
+    SimPort<MemRsp>     BcuRspPort;
+    SimPort<MemReq>     MemReqPort;
+    SimPort<MemRsp>     MemRspPort;
     // MSHR                         mshr;
 
     RbtCache(const SimContext& ctx, const char* name, const Config& config) 
         : SimObject<RbtCache>(ctx, name)    
-        , CoreReqPorts(config.num_inputs, this)
-        , CoreRspPorts(config.num_inputs, this)
+        , BcuReqPort(this)
+        , BcuRspPort(this)
         , MemReqPort(this)
         , MemRspPort(this)
         , config_(config)
@@ -117,6 +91,50 @@ private:
     uint64_t pending_fill_reqs_;    
 
 };
+
+class BcuUnit : public SimObject<BcuUnit> {
+private:
+    HashTable<std::pair<pipeline_trace_t*, uint32_t>> pending_reqs_;
+    RbtCache::Ptr rcache_;
+
+public:
+    SimPort<pipeline_trace_t*> Input;
+    SimPort<pipeline_trace_t*> Output;
+
+    BcuUnit(const SimContext& ctx, Core* core, const char* name) 
+        : SimObject<BcuUnit>(ctx, name) 
+        , pending_reqs_(BCUQ_SIZE)
+        , rcache_(RbtCache::Create("rcache", RbtCache::Config{
+            log2ceil(RCACHE_SIZE),  // C
+            log2ceil(L1_BLOCK_SIZE),// B
+            2,                      // W
+            0,                      // A
+            32,                     // address bits    
+            1,                      // number of banks
+            1,                      // number of ports
+            1,                      // request size   
+            true,                   // write-through
+            false,                  // write response
+            0,                      // victim size
+            RCACHE_MSHR_SIZE,       // mshr
+            2,                      // pipeline latency
+        }))
+        , Input(this)
+        , Output(this)
+        , core_(core)
+    {}
+    
+    virtual ~BcuUnit() {}
+
+    void reset() {}
+
+    void tick();
+
+private:
+    Core* core_;
+};
+
+
 
 }
 
