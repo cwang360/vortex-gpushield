@@ -13,19 +13,8 @@ class Core;
 class RbtCache : public SimObject<RbtCache> {
 public:
     struct Config {
-        uint8_t C;              // log2 cache size
-        uint8_t B;              // log2 block size
-        uint8_t W;              // log2 word size
-        uint8_t A;              // log2 associativity
-        uint8_t addr_width;     // word address bits
-        uint8_t num_banks;      // number of banks
-        uint8_t ports_per_bank; // number of ports per bank
-        uint8_t num_inputs;     // number of inputs
-        bool    write_through;  // is write-through
-        bool    write_reponse;  // enable write response
-        uint16_t victim_size;   // victim cache size
-        uint16_t mshr_size;     // MSHR buffer size
-        uint8_t latency;        // pipeline latency
+        uint64_t size;              // log2 cache size
+        uint8_t latency;
     };
     
     struct PerfStats {
@@ -67,8 +56,6 @@ public:
         , MemReqPort(this)
         , MemRspPort(this)
         , config_(config)
-        , mem_req_ports_(config.num_banks, this)
-        , mem_rsp_ports_(config.num_banks, this)
         // , mshr(config.mshr_size)
     {}
 
@@ -80,11 +67,7 @@ public:
     
 private:
     Config config_;
-    std::queue<RbtCacheEntry> cache_set_;
-    Switch<MemReq, MemRsp>::Ptr mem_switch_;    
-    Switch<MemReq, MemRsp>::Ptr bypass_switch_;
-    std::vector<SimPort<MemReq>> mem_req_ports_;
-    std::vector<SimPort<MemRsp>>  mem_rsp_ports_;
+    std::deque<RbtCacheEntry> cache_set_;
     PerfStats perf_stats_;
     uint64_t pending_read_reqs_;
     uint64_t pending_write_reqs_;
@@ -105,19 +88,8 @@ public:
         : SimObject<BcuUnit>(ctx, name) 
         , pending_reqs_(BCUQ_SIZE)
         , rcache_(RbtCache::Create("rcache", RbtCache::Config{
-            log2ceil(RCACHE_SIZE),  // C
-            log2ceil(L1_BLOCK_SIZE),// B
-            2,                      // W
-            0,                      // A
-            32,                     // address bits    
-            1,                      // number of banks
-            1,                      // number of ports
-            1,                      // request size   
-            true,                   // write-through
-            false,                  // write response
-            0,                      // victim size
-            RCACHE_MSHR_SIZE,       // mshr
-            2,                      // pipeline latency
+            RCACHE_SIZE,
+            2
         }))
         , Input(this)
         , Output(this)

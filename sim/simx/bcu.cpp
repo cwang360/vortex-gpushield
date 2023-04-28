@@ -53,7 +53,7 @@ void BcuUnit::tick() {
 }
 
 void RbtCache::reset() {
-    cache_set_ = std::queue<RbtCacheEntry>();
+    cache_set_ = std::deque<RbtCacheEntry>();
     perf_stats_ = PerfStats();
     // mshr.clear();
     pending_read_reqs_ = 0;
@@ -74,11 +74,38 @@ void RbtCache::tick() {
     
     DT(1, "rcache-receiving-req: addr=" << std::hex << bcu_req.addr << ", " << bcu_req.tag);
 
-    
+    auto it = cache_set_.begin();
+    for (; it != cache_set_.end(); it++) {
+        // TODO: check buffer id
+        if (it->base_addr == bcu_req.addr) {
+            DT(1, "RBT entry found in rcache");
+            MemRsp bcu_rsp{bcu_req.tag, bcu_req.core_id, bcu_req.uuid};
+            BcuRspPort.send(bcu_rsp, config_.latency);
+            DT(1, "rcache-sending-rsp: addr=" << std::hex << bcu_req.addr << ", " << bcu_req.tag);
+            break;
+        }
+    }
+    if (it == cache_set_.end()) {
+        // miss
+        DT(1, "RBT entry does not exist in rcache");
+        if (cache_set_.size() == config_.size) {
+            cache_set_.pop_front();
+            ++perf_stats_.evictions;
+        }
 
-    MemRsp bcu_rsp{bcu_req.tag, bcu_req.core_id, bcu_req.uuid};
-    BcuRspPort.send(bcu_rsp, config_.latency);
-    DT(1, "rcache-sending-rsp: addr=" << std::hex << bcu_req.addr << ", " << bcu_req.tag);
+        // TODO: actually set up RBT entry
+        RbtCacheEntry entry;
+        entry.base_addr = bcu_req.addr;
+
+        cache_set_.push_back(entry);
+
+        MemRsp bcu_rsp{bcu_req.tag, bcu_req.core_id, bcu_req.uuid};
+        BcuRspPort.send(bcu_rsp, config_.latency);
+        DT(1, "rcache-sending-rsp: addr=" << std::hex << bcu_req.addr << ", " << bcu_req.tag);
+        ++perf_stats_.read_misses;
+    }
+
+    
 
     ++perf_stats_.reads;
 
