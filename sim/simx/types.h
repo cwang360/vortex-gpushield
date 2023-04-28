@@ -268,6 +268,83 @@ inline std::ostream &operator<<(std::ostream &os, const MemRsp& rsp) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+struct RbtEntry {
+    uint16_t buffer_id;
+    uint64_t base_addr;
+    uint64_t size;
+    bool read_only;
+    uint64_t kernel_id;
+
+    RbtEntry(
+      uint16_t _buffer_id = 0,
+      uint64_t _base_addr = 0,
+      uint64_t _size = 0,
+      bool _read_only = 0,
+      uint64_t _kernel_id = 0
+    ) : buffer_id(_buffer_id)
+      , base_addr(_base_addr)
+      , size(_size)
+      , read_only(_read_only)
+      , kernel_id(_kernel_id)
+    {}
+};
+
+inline std::ostream &operator<<(std::ostream &os, const RbtEntry& entry) {
+  os << "(buffer_id=" << std::hex << entry.buffer_id << ", base_addr=0x" << entry.base_addr;
+  os << ", size=0x" << entry.size << ", read_only=" << entry.read_only << ", kernel_id=" << entry.kernel_id;
+  os << ")";
+  return os;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+struct RbtEntryReq {
+    uint64_t addr;
+    uint16_t buffer_id;
+    uint32_t tag;
+    uint64_t uuid;
+
+    RbtEntryReq(uint64_t _addr = 0, 
+           uint16_t _buffer_id = 0,
+           uint64_t _tag = 0,
+           uint64_t _uuid = 0
+    )   : addr(_addr)
+        , buffer_id(_buffer_id)
+        , tag(_tag)
+        , uuid(_uuid)
+    {}
+};
+
+inline std::ostream &operator<<(std::ostream &os, const RbtEntryReq& req) {
+  os << "rbt-entry-req: ";
+  os << "addr=0x" << std::hex << req.addr << std::dec << ", tag=" << req.tag << ", buffer_id=" << req.buffer_id;
+  os << " (#" << std::dec << req.uuid << ")";
+  return os;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+struct RbtEntryRsp {
+    uint64_t tag;    
+    RbtEntry* rbt_entry;
+    uint64_t uuid;
+    uint64_t req_addr;
+    RbtEntryRsp(uint64_t _tag = 0, RbtEntry* _rbt_entry = NULL, uint64_t _uuid = 0, uint64_t _req_addr = 0)
+      : tag (_tag) 
+      , rbt_entry(_rbt_entry)
+      , uuid(_uuid)
+      , req_addr(_req_addr)
+    {}
+};
+
+inline std::ostream &operator<<(std::ostream &os, const RbtEntryRsp& rsp) {
+  os << "rbt-mem-rsp: tag=" << rsp.tag << ", rbt_entry=" << *rsp.rbt_entry;
+  os << " (#" << std::dec << rsp.uuid << ")";
+  return os;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
 class HashTable {
 private:

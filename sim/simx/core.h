@@ -154,6 +154,8 @@ private:
   SharedMem::Ptr shared_mem_;
   Switch<MemReq, MemRsp>::Ptr l1_mem_switch_;
   std::vector<Switch<MemReq, MemRsp>::Ptr> dcache_switch_;
+  RbtMem::Ptr rbt_mem_;
+
   // Switch<MemReq, MemRsp>::Ptr rcache_switch_;
 
   PipelineLatch fetch_latch_;
@@ -180,6 +182,7 @@ private:
   friend class FpuUnit;
   friend class GpuUnit;
   friend class BcuUnit;
+  friend class RbtCache;
 };
 
 } // namespace vortex
