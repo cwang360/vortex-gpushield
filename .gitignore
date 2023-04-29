@@ -5,3 +5,8 @@
 *.so
 *.log
 *.a
+
+.vscode
+*.cache
+*.code-workspace
+*.depend

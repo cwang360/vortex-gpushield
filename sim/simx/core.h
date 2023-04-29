@@ -140,6 +140,7 @@ private:
   MemoryUnit mmu_;
   RAM smem_;
   std::vector<TexUnit> tex_units_;
+  
 
   std::vector<std::shared_ptr<Warp>> warps_;  
   std::vector<WarpMask> barriers_;  
@@ -148,14 +149,15 @@ private:
   std::vector<IBuffer> ibuffers_;
   Scoreboard scoreboard_;
   std::vector<ExeUnit::Ptr> exe_units_;
+  RbtMem::Ptr rbt_mem_;
   BcuUnit::Ptr bcu_;
   Cache::Ptr icache_;
   Cache::Ptr dcache_;
-  Cache::Ptr rcache_;
   SharedMem::Ptr shared_mem_;
   Switch<MemReq, MemRsp>::Ptr l1_mem_switch_;
   std::vector<Switch<MemReq, MemRsp>::Ptr> dcache_switch_;
-  Switch<MemReq, MemRsp>::Ptr rcache_switch_;
+
+  // Switch<MemReq, MemRsp>::Ptr rcache_switch_;
 
   PipelineLatch fetch_latch_;
   PipelineLatch decode_latch_;
@@ -181,6 +183,7 @@ private:
   friend class FpuUnit;
   friend class GpuUnit;
   friend class BcuUnit;
+  friend class RbtCache;
 };
 
 } // namespace vortex
