@@ -16,6 +16,8 @@ public:
     struct Config {
         uint64_t size;              // log2 cache size
         uint8_t latency;
+        uint64_t lower_level_latency;
+        bool lru; // lru if true, fifo if false
     };
     
     struct PerfStats {
@@ -39,11 +41,11 @@ public:
 
     SimPort<RbtEntryReq>     BcuReqPort;
     SimPort<RbtEntryRsp>     BcuRspPort;
-    // SimPort<RbtEntryReq>     MemReqPort;
-    // SimPort<RbtEntryRsp>     MemRspPort;
+    SimPort<RbtEntryReq>*     MemReqPort;
+    SimPort<RbtEntryRsp>*     MemRspPort;
     // MSHR                         mshr;
 
-    RbtCache(const SimContext& ctx, Core* core, const char* name, const Config& config) 
+    RbtCache(const SimContext& ctx, Core* core, const char* name, std::string print_name, const Config& config) 
         : SimObject<RbtCache>(ctx, name)    
         , BcuReqPort(this)
         , BcuRspPort(this)
@@ -51,6 +53,7 @@ public:
         // , MemRspPort(this)
         , config_(config)
         , core_(core)
+        , print_name(print_name)
         // , mshr(config.mshr_size)
     {}
 
@@ -63,7 +66,8 @@ public:
 private:
     Config config_;
     Core* core_;
-    std::deque<RbtEntry*> cache_set_;
+    std::string print_name;
+    std::list<RbtEntry*> cache_set_;
     PerfStats perf_stats_;
     uint64_t pending_read_reqs_;
     uint64_t pending_fill_reqs_;  
@@ -72,23 +76,14 @@ private:
 class BcuUnit : public SimObject<BcuUnit> {
 private:
     HashTable<std::pair<pipeline_trace_t*, uint32_t>> pending_reqs_;
-    RbtCache::Ptr rcache_;
+    RbtCache::Ptr l1_rcache_;
+    RbtCache::Ptr l2_rcache_;
 
 public:
     SimPort<pipeline_trace_t*> Input;
     SimPort<pipeline_trace_t*> Output;
 
-    BcuUnit(const SimContext& ctx, Core* core, const char* name) 
-        : SimObject<BcuUnit>(ctx, name) 
-        , pending_reqs_(BCUQ_SIZE)
-        , rcache_(RbtCache::Create(core, "rcache", RbtCache::Config{
-            RCACHE_SIZE,
-            1
-        }))
-        , Input(this)
-        , Output(this)
-        , core_(core)
-    {}
+    BcuUnit(const SimContext& ctx, Core* core, const char* name);
     
     virtual ~BcuUnit() {}
 
@@ -145,6 +140,7 @@ private:
     uint64_t latency_;
 
 friend class RbtCache;
+friend class BcuUnit;
 };
 
 
