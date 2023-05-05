@@ -8,9 +8,9 @@ BcuUnit::BcuUnit(const SimContext& ctx, Core* core, const char* name)
     : SimObject<BcuUnit>(ctx, name),
       pending_reqs_(BCUQ_SIZE),
       l1_rcache_(RbtCache::Create(core, "l1_rcache", "l1_rcache",
-                                  RbtCache::Config{RCACHE_SIZE, 1, 1, false})),
+                                  RbtCache::Config{16384, 1, 1, false})),
       l2_rcache_(RbtCache::Create(core, "l2_rcache", "l2_rcache",
-                                  RbtCache::Config{RCACHE_SIZE, 1, core->rbt_mem_->latency_, false})),
+                                  RbtCache::Config{16384, 1, core->rbt_mem_->latency_, false})),
       Input(this),
       Output(this),
       core_(core) {
@@ -34,16 +34,24 @@ void BcuUnit::tick() {
                                  << ", " << *trace);
 
         auto access_addr = mem_rsp.req_addr;
+        auto read_only = mem_rsp.rbt_entry->read_only;
+        auto is_write = trace->lsu.type == LsuType::STORE;
         auto rbt_entry_base_addr = mem_rsp.rbt_entry->base_addr;
         auto rbt_entry_size = mem_rsp.rbt_entry->size;
-        auto evaluation = (rbt_entry_base_addr <= access_addr) &&
+        auto in_bounds = (rbt_entry_base_addr <= access_addr) &&
                           (access_addr < rbt_entry_base_addr + rbt_entry_size);
+        auto valid_write = (read_only && !is_write || !read_only);
+        auto evaluation = in_bounds && valid_write;
+
         if (rbt_entry_base_addr) {
             DT(1, "bcu-evaluation: access_addr=0x"
                       << std::hex << access_addr << " rbt_entry_base_addr=0x"
                       << rbt_entry_base_addr << " rbt_entry_size=0x"
-                      << rbt_entry_size
+                      << rbt_entry_size << " is_write=" << is_write
                       << " evaluation=" << (evaluation ? "valid" : "invalid"));
+            if (!evaluation) {
+                DT(1, "bcu-evaluation: failure reason is " << (!in_bounds ? "out of bounds" : "write to read-only"));
+            }
         }
         assert(entry.second);
         --entry.second;  // track remaining blocks
