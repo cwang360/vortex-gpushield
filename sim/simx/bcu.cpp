@@ -70,8 +70,6 @@ void BcuUnit::tick() {
     auto mem_addr = trace->mem_addrs.at(0).at(0);
 
     if (buffer_id_map_.count(mem_addr.addr)) {
-        // FIXME: need to properly initialize memory and request for loading RBT
-        // entry.
         DT(1, "bcu: valid buffer id found");
         auto tag = pending_reqs_.allocate({trace, 1});
         DT(1, "bcu-req: addr=0x" << std::hex << mem_addr.addr << ", " << tag
@@ -94,10 +92,8 @@ void BcuUnit::tick() {
 
 void RbtCache::reset() {
     cache_set_ = std::list<RbtEntry*>();
+    pending_reqs_ = std::list<RbtEntryReq>();
     perf_stats_ = PerfStats();
-    // mshr.clear();
-    pending_read_reqs_ = 0;
-    pending_fill_reqs_ = 0;
 }
 
 void RbtCache::tick() {
@@ -105,7 +101,7 @@ void RbtCache::tick() {
     // handle mem response
     if (!MemRspPort->empty()) {
         auto& mem_rsp = MemRspPort->front();
-        DT(1, "(" << print_name << ") " << mem_rsp);
+        DT(1, "(" << print_name << ") received mem_rsp " << mem_rsp);
 
         // eviction if necessary
         if (cache_set_.size() == config_.size) {
@@ -115,13 +111,21 @@ void RbtCache::tick() {
 
         cache_set_.push_back(mem_rsp.rbt_entry);
 
-        BcuRspPort.send(mem_rsp, config_.latency);
-        DT(1, "(" << print_name << ") rcache-sending-rsp: " << mem_rsp);
+        // BcuRspPort.send(mem_rsp, config_.latency);
+        DT(1, "(" << print_name << ") rcache: sending rsp for requests matching buffer_id " << mem_rsp.rbt_entry->buffer_id);
+
+        for (auto it = pending_reqs_.begin(); it != pending_reqs_.end();) {
+            if ((it)->buffer_id == mem_rsp.rbt_entry->buffer_id) {
+                DT(1, "(" << print_name << ") rcache: sending response for req tag=" << it->tag);
+                RbtEntryRsp bcu_rsp{it->tag, mem_rsp.rbt_entry, it->uuid, it->addr};
+                BcuRspPort.send(bcu_rsp, config_.latency);
+                it = pending_reqs_.erase(it);
+            } else {
+                it++;
+            }
+        }
         MemRspPort->pop();
     }
-
-    // calculate memory latency
-    // perf_stats_.mem_latency += pending_fill_reqs_;
 
     // handle incoming BCU requests
     if (BcuReqPort.empty()) return;
@@ -152,10 +156,25 @@ void RbtCache::tick() {
 
     if (it == cache_set_.end()) {
         // miss
-        DT(1, "(" << print_name << ") RBT entry does not exist in rcache, sending request to lower level");
-        // miss repair
-        MemReqPort->send(bcu_req, config_.lower_level_latency);
-        ++perf_stats_.read_misses;
+
+        bool pending_req = false;
+        for (auto it = pending_reqs_.begin(); it != pending_reqs_.end(); it++) {
+            if (it->buffer_id == bcu_req.buffer_id) {
+                pending_req = true;
+                break;
+            }
+        }
+
+        if (pending_req) {
+            DT(1, "(" << print_name << ") RBT entry does not exist in rcache, but there is already a pending request for it.");
+        } else {
+            DT(1, "(" << print_name << ") RBT entry does not exist in rcache, sending request to lower level");
+            MemReqPort->send(bcu_req, config_.lower_level_latency);
+            ++perf_stats_.read_misses;
+        }
+
+        pending_reqs_.push_back(bcu_req);
+
     }
 
     ++perf_stats_.reads;

@@ -69,8 +69,7 @@ private:
     std::string print_name;
     std::list<RbtEntry*> cache_set_;
     PerfStats perf_stats_;
-    uint64_t pending_read_reqs_;
-    uint64_t pending_fill_reqs_;  
+    std::list<RbtEntryReq> pending_reqs_;
 };
 
 class BcuUnit : public SimObject<BcuUnit> {
